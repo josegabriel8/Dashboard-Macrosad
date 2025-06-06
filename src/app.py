@@ -424,32 +424,10 @@ def calculate_yearly_changes():
     
     # Clean any potential infinite values (division by zero)
     changes = changes.replace([np.inf, -np.inf], np.nan)
-    
-    
-    # Export data to Excel
-    try:
-        output_dir = os.path.join(os.path.dirname(__file__), 'exports')
-        os.makedirs(output_dir, exist_ok=True)
-        timestamp = pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')
-        
-        with pd.ExcelWriter(os.path.join(output_dir, f'analysis_export_{timestamp}.xlsx')) as writer:
-            yearly_avg.to_excel(writer, sheet_name='yearly_averages', index=False)
-            changes.to_excel(writer, sheet_name='changes', index=False)
-            
-            # Export common centers as a DataFrame
-            pd.DataFrame({'common_centers': list(common_centers)}).to_excel(
-                writer, sheet_name='common_centers', index=False
-            )
-            
-            # Create a sheet for centers lists
-            centers_df = pd.DataFrame({
-                'all_centers': pd.Series(list(all_centers)),
-            })
-            centers_df.to_excel(writer, sheet_name='centers_lists', index=False)
-        
-    except Exception as e:
-        st.error(f"Error exporting data: {str(e)}")
-    
+
+    # Fill any remaining NaN values with 0
+    changes = changes.fillna(0)
+
     return changes
 
 def main():
@@ -465,24 +443,59 @@ def main():
         st.error(f"Error loading data: {e}")
         return
 
-    # Ensure 'Centro' is a string before applying .str.contains
-    data['Centro'] = data['Centro'].astype(str)
 
-    # Ensure gradocat1 is treated as a string
+    # Ensure 'Centro' is a string before applying .str.contains
+    data['Centro'] = data['Centro'].astype(str)    # Ensure gradocat1 is treated as a string
     data['gradocat1'] = data['gradocat1'].astype(str)
       # Round edad to the nearest first decimal
     data['edad'] = data['edad'].round(1)
     
-    # Métricas clave
+    # Filtros en la barra lateral
+    st.sidebar.header("Filtros")
+    
+    # Filter out NaN values from gradocat1 before creating the multiselect
+    valid_dependency_options = data['gradocat1'].dropna().unique()
+    valid_dependency_options2 = valid_dependency_options[ valid_dependency_options != "nan" ]
+    dependency_filter = st.sidebar.multiselect("Grado de Dependencia", options=valid_dependency_options, default=valid_dependency_options) 
+      # Add Centro (Proyectos) filter
+    active_user_filter = st.sidebar.multiselect("Estado de Usuario", options=data['Estadebaja'].unique(), default=data['Estadebaja'].unique())
+    centro_filter = st.sidebar.multiselect("Proyectos", options=data['Centro'].unique(), default=data['Centro'].unique())
+
+    
+    gender_filter = st.sidebar.multiselect("Género", options=data['Sexo'].unique(), default=data['Sexo'].unique())
+    age_filter = st.sidebar.slider("Rango de Edad", int(data['edad'].min()), int(data['edad'].max()), (int(data['edad'].min()), int(data['edad'].max())))
+    horas_filter = st.sidebar.slider("Rango de Horas PIA", 0, int(data['Horas_Mes_Cp'].max()), (0, int(data['Horas_Mes_Cp'].max())))
+    
+    # Apply Filters
+    if 'Estadebaja' in data.columns:
+        filtered_data = data[
+            (data['gradocat1'].isin(dependency_filter)) &
+            (data['Estadebaja'].isin(active_user_filter)) &
+            (data['Centro'].isin(centro_filter)) &
+            (data['Sexo'].isin(gender_filter)) &
+            (data['edad'].between(*age_filter)) &
+            (data['Horas_Mes_Cp'].between(*horas_filter))
+        ]
+    else:
+        # If Estadebaja column doesn't exist, skip that filter
+        filtered_data = data[
+            (data['gradocat1'].isin(dependency_filter)) &
+            (data['Centro'].isin(centro_filter)) &
+            (data['Sexo'].isin(gender_filter)) &
+            (data['edad'].between(*age_filter)) &
+            (data['Horas_Mes_Cp'].between(*horas_filter))
+        ]
+    
+    # Métricas clave (now based on filtered data)
     st.subheader("Métricas Clave")
     col1, col2, col3, col4 = st.columns(4)
     
-    # Custom styled metric cards
+    # Custom styled metric cards using filtered data
     with col1:
         st.markdown(
             card_style_general.format(
                 title="Número de Usuarios",
-                value=len(data['Usuario_Id'].unique())
+                value=len(filtered_data['Usuario_Id'].unique())
             ),
             unsafe_allow_html=True
         )
@@ -491,7 +504,7 @@ def main():
         st.markdown(
             card_style_general.format(
                 title="Horas PIA Promedio",
-                value=f"{data['Horas_Mes_Cp'].mean():.2f}"
+                value=f"{filtered_data['Horas_Mes_Cp'].mean():.2f}" if len(filtered_data) > 0 else "0.00"
             ),
             unsafe_allow_html=True
         )
@@ -500,37 +513,30 @@ def main():
         st.markdown(
             card_style_general.format(
                 title="Edad Promedio",
-                value=f"{data['edad'].mean():.2f}"
+                value=f"{filtered_data['edad'].mean():.2f}" if len(filtered_data) > 0 else "0.00"
             ),
             unsafe_allow_html=True
         )
     
     with col4:
-        gender_counts = data['Sexo'].value_counts(normalize=True) * 100
+        if len(filtered_data) > 0:
+            gender_counts = filtered_data['Sexo'].value_counts(normalize=True) * 100
+            gender_display = f"{gender_counts.get('Hombre', 0):.1f} / {gender_counts.get('Mujer', 0):.1f}"
+        else:
+            gender_display = "0.0 / 0.0"
         st.markdown(
             card_style_general.format(
                 title="% Hombres/Mujeres",
-                value=f"{gender_counts.get('H', 0):.1f} / {gender_counts.get('M', 0):.1f}"
+                value=gender_display
             ),
             unsafe_allow_html=True
         )
-
-    # Filtros en la barra lateral
-    st.sidebar.header("Filtros")
-    # Filter out NaN values from gradocat1 before creating the multiselect
-    valid_dependency_options = data['gradocat1'].dropna().unique()
-    dependency_filter = st.sidebar.multiselect("Grado de Dependencia", options=valid_dependency_options, default=valid_dependency_options) 
-    gender_filter = st.sidebar.multiselect("Género", options=data['Sexo'].unique(), default=data['Sexo'].unique())
-    age_filter = st.sidebar.slider("Rango de Edad", int(data['edad'].min()), int(data['edad'].max()), (int(data['edad'].min()), int(data['edad'].max())))
-    location_filter = st.sidebar.text_input("Ubicación (Centro)", value="", placeholder="Buscar por nombre de centro")
-    # Ensure filters are applied correctly    
-    # Apply Filters
-    filtered_data = data[
-        (data['gradocat1'].isin(dependency_filter)) &
-        (data['Sexo'].isin(gender_filter)) &
-        (data['edad'].between(*age_filter)) &
-        (data['Centro'].str.contains(location_filter, na=False))    ]
-      # Gráficos Interactivos
+    # Check if filtered data is empty
+    if len(filtered_data) == 0:
+        st.warning("⚠️ No hay datos que coincidan con los filtros seleccionados. Por favor, ajusta los filtros para ver los resultados.")
+        st.stop()
+    
+    # Gráficos Interactivos
     st.markdown(section_divider_with_icon.format(section_name="VISUALIZACIONES INTERACTIVAS"), unsafe_allow_html=True)
     st.subheader("Gráficos Interactivos")    # Gráfico de barras de Horas PIA promedio por grado de dependencia y sexo
     st.markdown("### Promedio de Horas PIA por Grado de Dependencia y Sexo")
@@ -582,10 +588,11 @@ def main():
     ])
     fig5.update_layout(barmode='stack', title="Cuidado Doméstico vs. Personal por Grado de Dependencia")
     st.plotly_chart(fig5)
+      # Map section separator
+    st.markdown(section_divider_with_icon.format(section_name="ANÁLISIS GEOGRÁFICO"), unsafe_allow_html=True)
     
-    # Map section separator
-    st.markdown(section_divider_with_icon.format(section_name="ANÁLISIS GEOGRÁFICO"), unsafe_allow_html=True)# Use main processed data for map (has both Horas_Mes_Cp and coordinates)
-    df_map_src = data.copy()
+    # Use filtered data for map (already filtered by sidebar controls)
+    df_map_src = filtered_data.copy()
 
     # Rename columns for compatibility
     df_map_src.rename(columns={"Gis_Longitud": "lon", "Gis_Latitud": "lat"}, inplace=True)
@@ -602,29 +609,13 @@ def main():
     df_map_src.dropna(subset=critical_columns, inplace=True)
 
     # Fill missing values in non-critical columns
-    df_map_src.fillna({'Centro': 'Unknown', 'Tipo_Usuario': 'Unknown', 'Sexo': 'Unknown'}, inplace=True)    # Map-level filters
-    st.sidebar.subheader("Filtros del Mapa")
-    centro_sel = st.sidebar.multiselect("Centro", df_map_src["Centro"].unique(), default=df_map_src["Centro"].unique())
-    sexo_sel = st.sidebar.multiselect("Sexo", df_map_src["Sexo"].unique(), default=df_map_src["Sexo"].unique())
-    age_min, age_max = st.sidebar.slider("Rango de edad", int(df_map_src.edad.min()), int(df_map_src.edad.max()), (int(df_map_src.edad.min()), int(df_map_src.edad.max())))
-    horas_min, horas_max = st.sidebar.slider("Rango de Horas PIA", 0, int(df_map_src.Horas_Mes_Cp.max()), (0, int(df_map_src.Horas_Mes_Cp.max())))    # Filter map data based on user selections
-    map_data = df_map_src[
-        (df_map_src.Centro.isin(centro_sel)) &
-        (df_map_src.Sexo.isin(sexo_sel)) &
-        (df_map_src.edad.between(age_min, age_max)) &
-        (df_map_src.Horas_Mes_Cp.between(horas_min, horas_max))
-    ]
+    df_map_src.fillna({'Centro': 'Unknown', 'Tipo_Usuario': 'Unknown', 'Sexo': 'Unknown'}, inplace=True)
 
     # Display map with color differentiation using Plotly
     st.subheader("Mapa de Usuarios por Horas PIA")
     
-    # Prepare the data for the Plotly map - need to include Horas_Mes_Cp for coloring
-    plotly_map_data = df_map_src[
-        (df_map_src.Centro.isin(centro_sel)) &
-        (df_map_src.Sexo.isin(sexo_sel)) &
-        (df_map_src.edad.between(age_min, age_max)) &
-        (df_map_src.Horas_Mes_Cp.between(horas_min, horas_max))
-    ]    # Create a scatter map with Plotly and color by Horas_Mes_Cp
+    # Use the already filtered data for map display
+    plotly_map_data = df_map_src# Create a scatter map with Plotly and color by Horas_Mes_Cp
     fig_map = px.scatter_mapbox(
         plotly_map_data,
         lat="lat",
@@ -746,11 +737,10 @@ def main():
         )
         col3.metric(
             "Pronóstico Final",
-            f"{forecast.values[-1]:.1f} horas"
-        )        # Add forecast by centro section
-        st.markdown("### Pronóstico por Centro")
+            f"{forecast.values[-1]:.1f} horas"        )        # Add forecast by centro section
+        st.markdown("### Pronóstico por Proyectos")
         st.markdown("""
-        Esta sección muestra la evolución y pronóstico de horas de servicio para cada centro.
+        Esta sección muestra la evolución y pronóstico de horas de servicio para cada proyecto.
         Las líneas sólidas representan datos históricos y las líneas punteadas son pronósticos.
         """)
 
@@ -761,11 +751,12 @@ def main():
         # Add center filter
         all_centers = list(forecasts_by_centro.keys())
         all_centers2 = [center for center in all_centers if center != "CAMAS "]
+        
         selected_centers = st.multiselect(
-            "Seleccionar Centros",
+            "Seleccionar Proyectos",
             options=all_centers,
             default=all_centers2,
-            help="Selecciona los centros que deseas visualizar en el gráfico"
+            help="Selecciona los proyectos que deseas visualizar en el gráfico"
         )
         
         # Create Plotly figure for multi-series forecast
@@ -798,10 +789,9 @@ def main():
                 mode='lines+markers',
                 marker=dict(size=3),
                 showlegend=False  # Hide from legend
-            ))
-          # Update layout
+            ))        # Update layout
         fig_ts_centro.update_layout(
-            title='Pronóstico de Horas de Servicio por Centro (3 años)',
+            title='Pronóstico de Horas de Servicio por Proyectos (3 años)',
             xaxis_title='Fecha',
             yaxis_title='Horas Promedio por Mes',
             hovermode='x unified',
@@ -924,26 +914,24 @@ def main():
         col3.metric(
             "Pronóstico Final",
             f"{forecast_grado.values[-1]:.1f}"
-        )
-
-        # Add forecast by centro section for grado dependencia
-        st.markdown("### Pronóstico de Grado de Dependencia por Centro")
+        )        # Add forecast by centro section for grado dependencia
+        st.markdown("### Pronóstico de Grado de Dependencia por Proyectos")
         st.markdown("""
-        Esta sección muestra la evolución y pronóstico del grado de dependencia para cada centro.
+        Esta sección muestra la evolución y pronóstico del grado de dependencia para cada proyecto.
         Las líneas sólidas representan datos históricos y las líneas punteadas son pronósticos.
         """)
 
         # Load and process time series data by centro for grado dependencia
         ts_data_by_centro_grado = load_contratos_data_by_centro_grado()
         forecasts_by_centro_grado = create_forecast_by_centro_grado(ts_data_by_centro_grado)
-        
-        # Add center filter
+          # Add center filter
         all_centers_grado = list(forecasts_by_centro_grado.keys())
+        
         selected_centers_grado = st.multiselect(
-            "Seleccionar Centros (Grado de Dependencia)",
+            "Seleccionar Proyectos (Grado de Dependencia)",
             options=all_centers_grado,
             default=all_centers_grado,
-            help="Selecciona los centros que deseas visualizar en el gráfico de grado de dependencia",
+            help="Selecciona los proyectos que deseas visualizar en el gráfico de grado de dependencia",
             key="centers_grado"  # Unique key to avoid conflict with previous multiselect
         )
         
@@ -980,10 +968,9 @@ def main():
                     marker=dict(size=3),
                     showlegend=False
                 ))
-        
-        # Update layout
+          # Update layout
         fig_ts_centro_grado.update_layout(
-            title='Pronóstico de Grado de Dependencia por Centro (3 años)',
+            title='Pronóstico de Grado de Dependencia por Proyectos (3 años)',
             xaxis_title='Fecha',
             yaxis_title='Grado de Dependencia Promedio',
             hovermode='x unified',
@@ -1010,25 +997,24 @@ def main():
         st.plotly_chart(fig_ts_centro_grado, use_container_width=True)
 
     except Exception as e:
-        st.error(f"Error al generar el pronóstico de grado de dependencia: {str(e)}")
-
-    # Percentage Change Comparison Section
-    st.subheader("Cambio Porcentual 2020-2024 por Centro")    
+        st.error(f"Error al generar el pronóstico de grado de dependencia: {str(e)}")    # Percentage Change Comparison Section
+    st.subheader("Cambio Porcentual 2020-2024 por Proyectos")    
     st.markdown("""
     Esta sección muestra el cambio porcentual en las horas PIA y el grado de dependencia 
-    para cada centro entre 2020 y 2024, basado en promedios anuales.
+    para cada proyecto entre 2020 y 2024, basado en promedios anuales.
     """)
     
     try:
         # 1) Obtener datos
         changes_data = calculate_yearly_changes()
-        
         all_centers_changes = list(changes_data['Centro'].unique())
+        default_centers= ['CAMAS ', 'DIPUTACION DE HUELVA', 'DIPUTACION_JAEN', 'LINARES', 'SAD DIPUTACIÓN CADIZ', 'UTE_MARTOS', 'ALCALA LA REAL']
+
         selected_centers_changes = st.multiselect(
-            "Seleccionar Centros (Cambios Porcentuales)",
+            "Seleccionar Proyectos (Cambios Porcentuales)",
             options=all_centers_changes,
-            default=all_centers_changes,
-            help="Selecciona los centros que deseas visualizar en el gráfico de cambios porcentuales",
+            default=default_centers,
+            help="Selecciona los proyectos que deseas visualizar en el gráfico de cambios porcentuales",
             key="centers_changes"
         )
           # Filter out centers with NaN values and those selected by user
@@ -1079,12 +1065,12 @@ def main():
             x=filtered_changes['Centro'],
             y=filtered_changes['cambio_grado'],
             marker_color='#4CAF50',
-            text=filtered_changes['cambio_grado'].round(1).astype(str) + '%',
-            textposition='auto',
+            text=filtered_changes['cambio_grado'].round(1).astype(str) + '%',            textposition='auto',
         ))
+        
         fig_changes.update_layout(
-            title=f'Cambio Porcentual por Centro ({periodo_label})',
-            xaxis_title='Centro',
+            title=f'Cambio Porcentual por Proyectos ({periodo_label})',
+            xaxis_title='Proyectos',
             yaxis_title='Cambio Porcentual (%)',
             barmode='group',
             hovermode='x unified',
