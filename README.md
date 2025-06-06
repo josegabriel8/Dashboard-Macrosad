@@ -91,38 +91,6 @@ El dashboard utiliza los siguientes archivos de datos:
 - **`src/db_usuarios_preprocessed.xlsx`**: Datos de usuarios preprocessados (datos NAIHA)
 - **`src/mapdata.xlsx`**: Datos geográficos para visualización en mapas
 
-## 🔧 Funcionalidades Técnicas
-
-### Preprocesamiento de Datos
-El archivo `src/preprocessing.py` incluye:
-- Conversión de campos numéricos
-- Limpieza de categorías de grado de dependencia
-- Binning de horas PIA en intervalos
-- Manejo de valores faltantes
-
-### Modelos de Pronóstico
-- **Modelo**: Exponential Smoothing (Holt-Winters)
-- **Componentes**: Tendencia aditiva y estacionalidad aditiva
-- **Período estacional**: 12 meses
-- **Horizonte de pronóstico**: 36-60 meses
-
-### Funciones Principales de `app.py`
-
-#### Carga de Datos
-- `load_data()`: Carga y limpia datos principales de expedientes
-- `load_contratos_data()`: Procesa datos históricos de contratos
-- `load_contratos_data_by_centro()`: Agrupa datos por centro
-- `load_contratos_data_grado()`: Procesa datos de grado de dependencia
-
-#### Modelos Predictivos
-- `create_time_series_forecast()`: Genera pronósticos temporales generales
-- `create_forecast_by_centro()`: Pronósticos específicos por centro
-- `create_time_series_forecast_grado()`: Pronósticos de grado de dependencia
-- `create_forecast_by_centro_grado()`: Pronósticos de grado por centro
-
-#### Análisis de Cambios
-- `calculate_yearly_changes()`: Calcula cambios porcentuales 2020-2024
-
 ## 📈 Uso del Dashboard
 
 ### Filtros Disponibles
