@@ -162,16 +162,6 @@ Cards con estadísticas principales:
 - Comparación 2020-2024 por centro
 - Métricas de cambio en horas y grado de dependencia
 
-## 📤 Exportación de Datos
-
-El sistema genera automáticamente archivos Excel en la carpeta `src/exports/` con:
-- Promedios anuales por centro
-- Datos de cambios porcentuales
-- Listas de centros analizados
-- Timestamps para control de versiones
-
-Formato de archivos: `analysis_export_YYYYMMDD_HHMMSS.xlsx`
-
 ## 🎨 Personalización
 
 ### Estilos CSS
@@ -220,26 +210,6 @@ El archivo `app.py` incluye estilos personalizados:
 - Alertas automáticas por email
 - API REST para integración externa
 
-## 🤝 Contribución
-
-Para contribuir al proyecto:
-1. Fork el repositorio
-2. Crea una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit tus cambios (`git commit -am 'Agrega nueva funcionalidad'`)
-4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
-5. Crea un Pull Request
-
-## 📞 Soporte
-
-Si encuentras algún problema:
-1. Revisa la sección de solución de problemas
-2. Verifica que todas las dependencias estén instaladas
-3. Asegúrate de ejecutar desde la ubicación correcta
-4. Reporta issues detallados con logs de error
-
-## 📄 Licencia
-
-Este proyecto está desarrollado para el análisis sociodemográfico de usuarios Macrosad.
 
 ---
 
