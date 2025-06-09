@@ -86,8 +86,6 @@ def load_data():
     if 'gradocat1' in df.columns:
         df['gradocat1'] = df['gradocat1'].astype(str)
     
-    # Drop rows where edad is NaN since we need it for calculations
-    df = df.dropna(subset=['edad'])
     
     return df
 
