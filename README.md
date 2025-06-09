@@ -1,5 +1,9 @@
 # Dashboard Macrosad - Análisis Sociodemográfico
 
+
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://dashboard-macrosad.streamlit.app/)
+
+
 Este proyecto proporciona un dashboard interactivo para el análisis del perfil sociodemográfico de los usuarios de Macrosad, con visualizaciones avanzadas y pronósticos temporales basados en datos históricos.
 
 ## 📋 Descripción
