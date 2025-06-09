@@ -484,6 +484,13 @@ def main():
             (data['Horas_Mes_Cp'].between(*horas_filter))
         ]
     
+    filtered_data2 = data[
+            (data['gradocat1'].isin(dependency_filter)) &
+            (data['Estadebaja'].isin(active_user_filter)) &
+            (data['Centro'].isin(centro_filter)) &
+            (data['Sexo'].isin(gender_filter)) 
+        ]
+    
     # Métricas clave (now based on filtered data)
     st.subheader("Métricas Clave")
     col1, col2, col3, col4 = st.columns(4)
@@ -493,7 +500,7 @@ def main():
         st.markdown(
             card_style_general.format(
                 title="Número de Usuarios",
-                value=len(filtered_data['Usuario_Id'].unique())
+                value=filtered_data2['ID'].count()
             ),
             unsafe_allow_html=True
         )
