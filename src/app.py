@@ -456,7 +456,7 @@ def main():
     # Filter out NaN values from gradocat1 before creating the multiselect
     valid_dependency_options = data['gradocat1'].dropna().unique()
     valid_dependency_options2 = valid_dependency_options[ valid_dependency_options != "nan" ]
-    dependency_filter = st.sidebar.multiselect("Grado de Dependencia", options=valid_dependency_options, default=valid_dependency_options) 
+    dependency_filter = st.sidebar.multiselect("Grado de Dependencia", options=data['gradocat1'].unique(), default=data['gradocat1'].unique()) 
       # Add Centro (Proyectos) filter
     active_user_filter = st.sidebar.multiselect("Estado de Usuario", options=data['Estadebaja'].unique(), default=data['Estadebaja'].unique())
     centro_filter = st.sidebar.multiselect("Proyectos", options=data['Centro'].unique(), default=data['Centro'].unique())
